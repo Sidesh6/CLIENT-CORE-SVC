@@ -10,10 +10,10 @@ from typing import Any, Optional
 from sqlalchemy import DateTime, MetaData
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-# Support postgres schema isolation (core_svc schema)
+# Support postgres schema isolation (core_svc schema) only when connecting to postgresql
 _db_url = os.getenv("DATABASE_URL", "")
 _db_schema = os.getenv("DB_SCHEMA", "core_svc")
-_schema = _db_schema if (_db_schema and not _db_url.startswith("sqlite")) else None
+_schema = _db_schema if (_db_url.startswith("postgresql") or _db_url.startswith("postgres")) else None
 _metadata = MetaData(schema=_schema) if _schema else MetaData()
 
 
@@ -37,4 +37,3 @@ def generate_uuid() -> str:
 def compute_content_hash(title: str, description: str) -> str:
     norm = f"{title.strip().lower()}|{description.strip().lower()}".encode("utf-8")
     return hashlib.sha256(norm).hexdigest()
-

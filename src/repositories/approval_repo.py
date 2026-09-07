@@ -69,9 +69,7 @@ class ApprovalRepository:
         item.reviewed_at = datetime.now(UTC)
 
         # If connected to an outbox row, ensure outbox status is PENDING for dispatcher to fire
-        if item.outbox_item and item.outbox_item.status == OutboxStatus.PENDING.value:
-            pass  # Already pending
-        elif item.outbox_item:
+        if item.outbox_item:
             item.outbox_item.status = OutboxStatus.PENDING.value
 
         self.session.flush()
@@ -91,9 +89,11 @@ class ApprovalRepository:
             return None
 
         # Record diff in feedback payload for learning service
-        item.feedback_payload["original_subject"] = item.proposed_subject
-        item.feedback_payload["original_body"] = item.proposed_body
-        item.feedback_payload["edit_reason"] = reason
+        fb = dict(item.feedback_payload or {})
+        fb["original_subject"] = item.proposed_subject
+        fb["original_body"] = item.proposed_body
+        fb["edit_reason"] = reason
+        item.feedback_payload = fb
 
         item.proposed_subject = subject
         item.proposed_body = body
@@ -104,8 +104,10 @@ class ApprovalRepository:
 
         if item.outbox_item:
             # Update payload inside outbox item
-            item.outbox_item.payload_json["subject"] = subject
-            item.outbox_item.payload_json["body"] = body
+            new_payload = dict(item.outbox_item.payload_json or {})
+            new_payload["subject"] = subject
+            new_payload["body"] = body
+            item.outbox_item.payload_json = new_payload
             item.outbox_item.status = OutboxStatus.PENDING.value
 
         self.session.flush()

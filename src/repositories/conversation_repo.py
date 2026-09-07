@@ -25,14 +25,52 @@ class ConversationRepository:
         )
         return self.session.execute(stmt).scalar_one_or_none()
 
+    def get_or_create(
+        self,
+        lead_id: str,
+        client_id: Optional[str] = None,
+        channel: str = "email",
+        subject: str = "Inquiry",
+    ) -> ConversationModel:
+        stmt = (
+            select(ConversationModel)
+            .options(selectinload(ConversationModel.messages), selectinload(ConversationModel.followups))
+            .where(ConversationModel.lead_id == lead_id)
+        )
+        conv = self.session.execute(stmt).scalars().first()
+        if not conv:
+            conv = ConversationModel(
+                lead_id=lead_id,
+                client_id=client_id,
+                channel=channel,
+                subject=subject,
+                status="active",
+            )
+            self.session.add(conv)
+            self.session.flush()
+        return conv
+
     def create_conversation(self, conv_dict: dict) -> ConversationModel:
         conv = ConversationModel(**conv_dict)
         self.session.add(conv)
         self.session.flush()
         return conv
 
-    def add_message(self, msg_dict: dict) -> MessageRecordModel:
-        msg = MessageRecordModel(**msg_dict)
+    def add_message(
+        self,
+        conversation_id: str,
+        sender_type: str = "us",
+        message_type: str = "proposal",
+        body: str = "",
+        sentiment: Optional[str] = None,
+    ) -> MessageRecordModel:
+        msg = MessageRecordModel(
+            conversation_id=conversation_id,
+            sender_type=sender_type,
+            message_type=message_type,
+            body=body,
+            sentiment=sentiment,
+        )
         self.session.add(msg)
         self.session.flush()
         return msg
